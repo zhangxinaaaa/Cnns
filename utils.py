@@ -48,6 +48,8 @@ def merge(src_dir, merged_filename):
     if src_dir.endswith('/') is False:
         src_dir += '/'
     merged = src_dir + merged_filename
+    if os.path.exists(merged):
+        return  # merged file already exists
     os.system('cd %s' % src_dir)  # change dir to source dictionary
     src_wav_files = find_files(src_dir)
     tmp = src_dir + 'tmp_500.wav'
@@ -83,6 +85,7 @@ def merge(src_dir, merged_filename):
 
 
 def specgrum(src, frame_len, frame_shift, n_fft, sr=16000, title='Spectrogram'):
+    src = np.array(src).squeeze()
     spectrum, freqs, ts, fig = plt.specgram(src, NFFT=n_fft, Fs=sr, window=np.hanning(frame_len),
                                             noverlap=frame_len-frame_shift, mode='default', scale_by_freq=True, sides='default',
                                             scale='dB', xextent=None)  # draw spectrum
@@ -149,7 +152,10 @@ def de_emphasis(src, b=[1], a=[1, 0.95]):
     return filter_matlab(b, a, src)
 
 
-def add_noise(clean, noise, snr):
+def add_noise(clean, noise, snr, normalization=True):
+    if normalization is True:
+        clean = normalize(clean)
+        noise = normalize(noise)
     Pc = np.dot(clean.T, clean) / len(clean)
     Pn = np.dot(noise.T, noise) / len(noise)
     alpha = np.sqrt(Pc / Pn / (10 ** (snr / 10)))  # scaling factor
@@ -181,9 +187,20 @@ def xi_bar(mag_clean, mag_noise, mu, sigma):
     for i in range(snr_db.shape[0]):  # frequency bin
         for j in range(snr_db.shape[1]):  # time index
             snr_mapped[i, j] = \
-                0.5 * (1 + math.erf((snr_db[i, j] - mu[i]) / sigma[i] * math.sqrt(2.0)))
+                0.5 * (1 + math.erf((snr_db[i, j] - mu[i]) / (sigma[i] * math.sqrt(2.0))))
 
     return snr_mapped
+
+
+def blocks2pcm(blocks, block_shift):
+    blocks = np.array(blocks).squeeze()
+    block_num, block_size = blocks.shape
+    pcm = np.array([])
+    for block_idx in range(block_num-1):
+        block = blocks[block_idx, :][:block_shift]
+        pcm = np.concatenate((pcm, block))
+    pcm = np.concatenate((pcm, blocks[-1, :]))
+    return pcm
 
 
 if __name__ == "__main__":
