@@ -105,7 +105,7 @@ class Tcn(nn.Module):
         return nn.Sequential(
             nn.BatchNorm1d(input_size, eps=1e-6),
             nn.ReLU(),
-            CasualPad1D(k, d_rate),  # padding to same
+            CasualPad1D(k, d_rate),  # padding to casual
             nn.Conv1d(in_channels=input_size,
                       out_channels=n_filt,
                       kernel_size=k,
