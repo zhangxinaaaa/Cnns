@@ -3,6 +3,21 @@ from torch import nn
 import numpy as np
 import math
 
+class CausalPad1d(nn.modules.Module):
+    def __init__(self, kernel_size, dilation, inplace: bool = False):
+        super(CausalPad1d, self).__init__()
+        left_pad = ((kernel_size - 1) * dilation, 0)
+        self.padder = nn.ConstantPad1d(left_pad, 0)
+        self.inplace = inplace
+
+    def forward(self, tensor):
+        result = self.padder(tensor)
+        return result
+
+    def extra_repr(self) -> str:
+        inplace_str = 'inplace=True' if self.inplace else ''
+        return inplace_str
+    
 
 def get_parameter_number(net):
     total_num = sum(p.numel() for p in net.parameters())
@@ -90,10 +105,11 @@ class Tcn(nn.Module):
         return nn.Sequential(
             nn.BatchNorm1d(input_size, eps=1e-6),
             nn.ReLU(),
+            CasualPad1D(k, d_rate),  # padding to same
             nn.Conv1d(in_channels=input_size,
                       out_channels=n_filt,
                       kernel_size=k,
-                      padding=d_rate * (k - 1) // 2,  # padding to same
+                      padding=0,  
                       bias=True,
                       dilation=d_rate)
         )
